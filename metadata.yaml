@@ -1,0 +1,5 @@
+homepage: 'https://dumbdata.co/'
+documentation: 'https://github.com/Jude-Nwachukwu/currency-value-formatter-splitter'
+versions:
+  - sha: 95d7188ded4b31348a4761b1478f56c6392f5bcb
+    changeNotes: Initial release.
