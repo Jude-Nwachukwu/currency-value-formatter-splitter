@@ -13,8 +13,8 @@ ___INFO___
   "id": "cvt_temp_public_id",
   "version": 1,
   "securityGroups": [],
-  "displayName": "Currency Value Formatter",
-  "description": "Formats currency values by removing currency symbols to return the actual value in your preferred data type..",
+  "displayName": "Currency Value Formatter/Splitter",
+  "description": "Formats currency values by removing currency symbols to return the actual value.",
   "containerContexts": [
     "WEB"
   ]
@@ -32,6 +32,14 @@ ___TEMPLATE_PARAMETERS___
     "help": "Specify the variable that contains the currency value."
   },
   {
+    "type": "TEXT",
+    "name": "customCurrencySymbols",
+    "simpleValueType": true,
+    "displayName": "Custom Currency Codes or Symbols",
+    "help": "Enter custom currency codes or symbols, separated by commas, if applicable.",
+    "valueHint": "$,USD,€,EUR (Comma separated)"
+  },
+  {
     "type": "RADIO",
     "name": "currencyCodeSymbolPosition",
     "displayName": "Currency Code or Symbol Position",
@@ -47,105 +55,72 @@ ___TEMPLATE_PARAMETERS___
     ],
     "simpleValueType": true,
     "help": "Select the where the currency symbol or code is positioned in the supply variable."
-  },
-  {
-    "type": "SELECT",
-    "name": "formattingMode",
-    "displayName": "Currency Formatting Mode",
-    "macrosInSelect": false,
-    "selectItems": [
-      {
-        "value": "Automatic Formatting for All Supported Currencies",
-        "displayValue": "Automatic Formatting (All Currencies)"
-      },
-      {
-        "value": "Custom Formatting for Selected Currencies",
-        "displayValue": "Custom Formatting (Selected Currencies)"
-      }
-    ],
-    "simpleValueType": true,
-    "help": "Choose a formatting mode. \u0027Automatic Formatting\u0027 is recommended for most use cases."
-  },
-  {
-    "type": "TEXT",
-    "name": "customCurrencySymbols",
-    "simpleValueType": true,
-    "displayName": "Custom Currency Codes or Symbols",
-    "help": "Enter custom currency codes or symbols, separated by commas, if applicable.",
-    "enablingConditions": [
-      {
-        "paramName": "formattingMode",
-        "paramValue": "Custom Formatting for Selected Currencies",
-        "type": "EQUALS"
-      }
-    ]
-  },
-  {
-    "type": "RADIO",
-    "name": "outputDataType",
-    "displayName": "Output Data Type",
-    "radioItems": [
-      {
-        "value": "String",
-        "displayValue": "String"
-      },
-      {
-        "value": "Float",
-        "displayValue": "Float"
-      },
-      {
-        "value": "Integer",
-        "displayValue": "Integer"
-      }
-    ],
-    "simpleValueType": true,
-    "help": "Select the desired data type for the final output."
-  },
-  {
-    "type": "CHECKBOX",
-    "name": "includeTextAfterValue",
-    "checkboxText": "Enable this option if the currency variable includes text after the currency value.",
-    "simpleValueType": true
   }
 ]
 
 
 ___SANDBOXED_JS_FOR_WEB_TEMPLATE___
 
-// Enter your template code here.
-const log = require('logToConsole');
+const makeString = require('makeString');
+const makeNumber = require('makeNumber');
 
-log('data =', data);
+function formatCurrency() {
+  // Retrieve user inputs
+  const currencyVariable = makeString(data.currencyVariable || '').trim();
+  const customCurrencySymbols = makeString(data.customCurrencySymbols || '')
+    .split(',')
+    .map(function (symbol) { return symbol.trim(); });
+  const position = data.currencyCodeSymbolPosition || 'Before';
 
-// Variables must return a value.
-return false;
-
-
-___WEB_PERMISSIONS___
-
-[
-  {
-    "instance": {
-      "key": {
-        "publicId": "logging",
-        "versionId": "1"
-      },
-      "param": [
-        {
-          "key": "environments",
-          "value": {
-            "type": 1,
-            "string": "debug"
-          }
-        }
-      ]
-    },
-    "clientAnnotations": {
-      "isEditedByUser": true
-    },
-    "isRequired": true
+  // Return 0 for empty input, undefined for missing or invalid input
+  if (currencyVariable === '') {
+    return 0;
   }
-]
+  if (!currencyVariable) {
+    return undefined;
+  }
+
+  // Check if any custom symbol or code is present in the currencyVariable
+  var containsSymbol = customCurrencySymbols.some(function (symbol) {
+    if (position === 'Before') {
+      return currencyVariable.indexOf(symbol) === 0;
+    } else if (position === 'After') {
+      return currencyVariable.lastIndexOf(symbol) === currencyVariable.length - symbol.length;
+    }
+    return false;
+  });
+
+  if (!containsSymbol) {
+    return undefined;
+  }
+
+  // Remove currency symbols or codes based on position
+  var cleanedValue = currencyVariable;
+
+  if (position === 'Before') {
+    customCurrencySymbols.forEach(function (symbol) {
+      if (cleanedValue.indexOf(symbol) === 0) {
+        cleanedValue = cleanedValue.substring(symbol.length).trim();
+      }
+    });
+  } else if (position === 'After') {
+    customCurrencySymbols.forEach(function (symbol) {
+      if (cleanedValue.lastIndexOf(symbol) === cleanedValue.length - symbol.length) {
+        cleanedValue = cleanedValue.substring(0, cleanedValue.length - symbol.length).trim();
+      }
+    });
+  }
+
+  // Remove delimiters like commas
+  cleanedValue = cleanedValue.split(',').join('');
+
+  // Validate that the result is a number
+  const finalNumber = makeNumber(cleanedValue);
+  return finalNumber === null ? undefined : finalNumber;
+}
+
+// Execute the function
+return formatCurrency();
 
 
 ___TESTS___
@@ -158,6 +133,6 @@ setup: ''
 
 ___NOTES___
 
-Created on 1/20/2025, 11:50:40 AM
+Created on 5/27/2026, 3:47:56 PM
 
 
